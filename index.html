@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="aurora">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0d1a">
+<title>Prism Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ---------- themes ---------- */
+  :root, :root[data-theme="aurora"] {
+    --page: #0a0c19;
+    --a1: #7c5cff; --a2: #19d3ff; --a3: #ff4fd8;
+    --grad: linear-gradient(135deg, #7c5cff 0%, #19d3ff 100%);
+    --glow: rgba(124, 92, 255, .55);
+    --panel: rgba(255,255,255,.055);
+    --panel-edge: rgba(255,255,255,.16);
+    --drawer: rgba(14,16,36,.92);
+    --key: rgba(255,255,255,.07);
+    --key-hi: rgba(255,255,255,.12);
+    --txt: #f3f4ff;
+    --muted: #9aa1c9;
+    --fn: #8fe9ff;
+    --op: rgba(124,92,255,.24);
+    --op-txt: #cbbfff;
+    --shadow: 0 50px 90px -30px rgba(0,0,0,.75);
+    --blob: .5;
+  }
+  :root[data-theme="sunset"] {
+    --page: #150b0e;
+    --a1: #ff7a3d; --a2: #ff3d81; --a3: #ffc23d;
+    --grad: linear-gradient(135deg, #ff9a3d 0%, #ff3d81 100%);
+    --glow: rgba(255,100,70,.55);
+    --drawer: rgba(34,14,20,.93);
+    --fn: #ffd08a;
+    --op: rgba(255,122,61,.2);
+    --op-txt: #ffc4a3;
+    --muted: #c79aa0;
+  }
+  :root[data-theme="mint"] {
+    --page: #06130f;
+    --a1: #19e6a0; --a2: #1aa7ff; --a3: #b6ff3d;
+    --grad: linear-gradient(135deg, #19e6a0 0%, #1aa7ff 100%);
+    --glow: rgba(25,230,160,.5);
+    --drawer: rgba(8,28,22,.93);
+    --fn: #b9ff8a;
+    --op: rgba(25,230,160,.17);
+    --op-txt: #a6ffe0;
+    --muted: #8fbfae;
+  }
+  :root[data-theme="frost"] {
+    --page: #e7eaf6;
+    --a1: #7c8cff; --a2: #ff8ac6; --a3: #8feaff;
+    --grad: linear-gradient(135deg, #7c8cff 0%, #ff7ab8 100%);
+    --glow: rgba(124,140,255,.55);
+    --panel: rgba(255,255,255,.55);
+    --panel-edge: rgba(255,255,255,.95);
+    --drawer: rgba(247,248,255,.94);
+    --key: rgba(255,255,255,.72);
+    --key-hi: rgba(255,255,255,1);
+    --txt: #1b1f3b;
+    --muted: #6b7194;
+    --fn: #5a63c9;
+    --op: rgba(124,140,255,.17);
+    --op-txt: #4a56d6;
+    --shadow: 0 40px 80px -30px rgba(70,80,150,.35);
+    --blob: .65;
+  }
+
+  :root {
+    --sans: 'Sora', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; min-height: 100dvh;
+    display: grid; place-items: center;
+    background: var(--page);
+    color: var(--txt);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    transition: background .6s, color .4s;
+    overflow: hidden;
+  }
+
+  /* animated aurora backdrop */
+  .bg { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+  .bg i { position: absolute; border-radius: 50%; filter: blur(90px); opacity: var(--blob); transition: background .8s; }
+  .bg i:nth-child(1) { width: 52vmax; height: 52vmax; left: -14vmax; top: -16vmax; background: var(--a1); animation: d1 24s ease-in-out infinite alternate; }
+  .bg i:nth-child(2) { width: 46vmax; height: 46vmax; right: -12vmax; bottom: -14vmax; background: var(--a2); animation: d2 28s ease-in-out infinite alternate; }
+  .bg i:nth-child(3) { width: 30vmax; height: 30vmax; left: 52%; top: 8%; background: var(--a3); opacity: calc(var(--blob) * .5); animation: d3 32s ease-in-out infinite alternate; }
+  @keyframes d1 { to { transform: translate(14vmax, 10vmax) scale(1.15); } }
+  @keyframes d2 { to { transform: translate(-12vmax, -9vmax) scale(1.1); } }
+  @keyframes d3 { to { transform: translate(-22vmax, 26vmax) scale(.8); } }
+
+  /* calculator shell */
+  .calc {
+    position: relative; z-index: 1;
+    width: min(364px, calc(100vw - 24px));
+    padding: 14px 20px 22px;
+    border-radius: 38px;
+    background: var(--panel);
+    -webkit-backdrop-filter: blur(28px) saturate(150%);
+    backdrop-filter: blur(28px) saturate(150%);
+    box-shadow: var(--shadow), inset 0 0 0 1px var(--panel-edge), inset 0 1px 0 var(--key-hi);
+    overflow: hidden;
+    animation: rise .8s cubic-bezier(.2,.9,.2,1) both;
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(24px) scale(.96); } to { opacity: 1; transform: none; } }
+
+  /* header */
+  .bar { display: flex; align-items: center; justify-content: space-between; height: 36px; }
+  .brand {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-size: 10.5px; font-weight: 600; letter-spacing: .28em; text-transform: uppercase; color: var(--muted);
+    user-select: none;
+  }
+  .brand::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--grad); box-shadow: 0 0 12px var(--glow); }
+  .tools { display: flex; gap: 6px; }
+  .tool {
+    appearance: none; border: 0; cursor: pointer;
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--key); color: var(--muted);
+    display: grid; place-items: center;
+    box-shadow: inset 0 1px 0 var(--key-hi);
+    transition: background .2s, color .2s, transform .2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tool:hover { color: var(--txt); background: var(--key-hi); transform: translateY(-1px); }
+  .tool svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .tool .on { display: none; }
+  .tool[aria-pressed="true"] { color: var(--a2); }
+  .tool[aria-pressed="true"] .on { display: block; }
+  .tool[aria-pressed="true"] .off { display: none; }
+
+  /* display */
+  .display { position: relative; padding: 22px 4px 10px; cursor: pointer; }
+  .expr {
+    min-height: 20px; text-align: right; white-space: nowrap; overflow: hidden;
+    font-size: 14px; font-weight: 400; color: var(--muted); letter-spacing: .02em;
+  }
+  .value {
+    margin-top: 6px; padding-left: 46px;
+    text-align: right; white-space: nowrap; overflow: hidden;
+    font-size: 58px; line-height: 1.2; font-weight: 300; letter-spacing: -.03em;
+    background: linear-gradient(100deg, var(--txt) 55%, var(--a2) 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+    padding-right: 2px;
+  }
+  .value.pop { animation: pop .38s cubic-bezier(.2,.9,.3,1.3); }
+  @keyframes pop { from { opacity: .3; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: none; } }
+  .back {
+    position: absolute; left: 2px; bottom: 16px;
+    appearance: none; border: 0; cursor: pointer; overflow: hidden;
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--key); color: var(--muted);
+    display: grid; place-items: center;
+    transition: background .2s, color .2s, transform .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .back:hover { color: var(--txt); background: var(--key-hi); }
+  .back:active { transform: scale(.9); }
+  .back svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* keys */
+  .keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 14px; }
+  .key {
+    position: relative; overflow: hidden;
+    appearance: none; border: 0; margin: 0; padding: 0;
+    height: 62px; border-radius: 22px;
+    background: var(--key); color: var(--txt);
+    font: 400 24px/1 var(--sans);
+    box-shadow: inset 0 1px 0 var(--key-hi), 0 10px 18px -12px rgba(0,0,0,.5);
+    cursor: pointer; user-select: none; -webkit-user-select: none;
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    transition: transform .3s cubic-bezier(.3,1.8,.5,1), background .2s, box-shadow .25s;
+  }
+  .key::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    background: radial-gradient(90px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,.22), transparent 65%);
+    opacity: 0; transition: opacity .25s;
+  }
+  .key:hover::before { opacity: 1; }
+  .key:active, .key.pressed { transform: scale(.92); transition-duration: .07s; }
+  .key:focus-visible, .tool:focus-visible, .back:focus-visible, .h-item:focus-visible, .h-btn:focus-visible { outline: 2px solid var(--a2); outline-offset: 2px; }
+  .key.fn { color: var(--fn); font-size: 20px; font-weight: 500; }
+  .key.op { background: var(--op); color: var(--op-txt); font-size: 30px; font-weight: 300; }
+  .key.op.active { background: var(--grad); color: #fff; box-shadow: 0 0 28px -2px var(--glow), inset 0 1px 0 rgba(255,255,255,.4); }
+  .key.eq { background: var(--grad); color: #fff; font-size: 30px; font-weight: 300; box-shadow: 0 14px 28px -10px var(--glow), inset 0 1px 0 rgba(255,255,255,.4); }
+  .key.zero { grid-column: span 2; }
+
+  .ripple {
+    position: absolute; border-radius: 50%; pointer-events: none;
+    background: rgba(255,255,255,.32); transform: scale(0); opacity: 1;
+    animation: rip .62s ease-out forwards;
+  }
+  @keyframes rip { to { transform: scale(1); opacity: 0; } }
+
+  /* history drawer */
+  .history {
+    position: absolute; left: 10px; right: 10px; bottom: 10px; top: 220px; z-index: 5;
+    display: flex; flex-direction: column;
+    background: var(--drawer);
+    -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+    border-radius: 28px;
+    box-shadow: 0 -16px 40px rgba(0,0,0,.35), inset 0 0 0 1px var(--panel-edge);
+    transform: translateY(112%); opacity: 0; visibility: hidden;
+    transition: transform .45s cubic-bezier(.2,.9,.2,1), opacity .3s, visibility 0s .45s;
+  }
+  .history.open { transform: none; opacity: 1; visibility: visible; transition-delay: 0s; }
+  .h-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px 8px; }
+  .h-title { font-size: 10.5px; font-weight: 600; letter-spacing: .28em; color: var(--muted); }
+  .h-actions { display: flex; gap: 6px; }
+  .h-btn {
+    appearance: none; border: 0; cursor: pointer;
+    background: var(--key); color: var(--txt);
+    font: 500 12px var(--sans); padding: 7px 12px; border-radius: 99px;
+    transition: background .2s;
+  }
+  .h-btn:hover { background: var(--key-hi); }
+  .h-list { flex: 1; overflow-y: auto; padding: 4px 10px 12px; scrollbar-width: thin; scrollbar-color: var(--key-hi) transparent; }
+  .h-item {
+    appearance: none; border: 0; background: transparent; color: var(--txt);
+    display: block; width: 100%; text-align: right; padding: 10px 12px; border-radius: 16px; cursor: pointer;
+    font-family: var(--sans); transition: background .2s;
+  }
+  .h-item:hover { background: var(--key); }
+  .h-expr { display: block; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .h-res { display: block; font-size: 24px; font-weight: 300; margin-top: 2px; }
+  .h-empty { height: 100%; display: grid; place-items: center; color: var(--muted); font-size: 13px; line-height: 1.6; text-align: center; padding: 20px; }
+
+  @media (max-height: 700px) { .key { height: 52px; border-radius: 18px; } .keys { gap: 10px; } .value { font-size: 48px; } .display { padding-top: 12px; } }
+  @media (max-height: 580px) { .key { height: 44px; border-radius: 15px; font-size: 20px; } .value { font-size: 40px; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="bg" aria-hidden="true"><i></i><i></i><i></i></div>
+
+<main class="calc" id="calc">
+  <header class="bar">
+    <span class="brand" id="tag">Prism</span>
+    <div class="tools">
+      <button class="tool" id="btnHistory" aria-label="Toggle history" title="History (H)">
+        <svg viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3.5 4v4.5H8"/><path d="M12 7.5V12l3 2"/></svg>
+      </button>
+      <button class="tool" id="btnTheme" aria-label="Change theme" title="Theme (T)">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor"/></svg>
+      </button>
+      <button class="tool" id="btnSound" aria-label="Key sounds" aria-pressed="false" title="Key sounds (M)">
+        <svg class="off" viewBox="0 0 24 24"><path d="M4 9.5v5h3.5l4.5 4v-13l-4.5 4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
+        <svg class="on" viewBox="0 0 24 24"><path d="M4 9.5v5h3.5l4.5 4v-13l-4.5 4z"/><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a8 8 0 0 1 0 11"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <section class="display" id="lcd" title="Click to copy" aria-label="Display">
+    <div class="expr" id="expr"></div>
+    <div class="value" id="value" aria-live="polite">0</div>
+    <button class="back" data-k="back" aria-label="Backspace" title="Backspace">
+      <svg viewBox="0 0 24 24"><path d="M9 5h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-6-7z"/><path d="M13 9.5l4 4M17 9.5l-4 4"/></svg>
+    </button>
+  </section>
+
+  <div class="keys" id="keys">
+    <button class="key fn" data-k="ac" aria-label="All clear">AC</button>
+    <button class="key fn" data-k="neg" aria-label="Toggle sign">±</button>
+    <button class="key fn" data-k="%" aria-label="Percent">%</button>
+    <button class="key op" data-k="/" aria-label="Divide">÷</button>
+
+    <button class="key" data-k="7">7</button>
+    <button class="key" data-k="8">8</button>
+    <button class="key" data-k="9">9</button>
+    <button class="key op" data-k="*" aria-label="Multiply">×</button>
+
+    <button class="key" data-k="4">4</button>
+    <button class="key" data-k="5">5</button>
+    <button class="key" data-k="6">6</button>
+    <button class="key op" data-k="-" aria-label="Subtract">−</button>
+
+    <button class="key" data-k="1">1</button>
+    <button class="key" data-k="2">2</button>
+    <button class="key" data-k="3">3</button>
+    <button class="key op" data-k="+" aria-label="Add">+</button>
+
+    <button class="key zero" data-k="0">0</button>
+    <button class="key" data-k="." aria-label="Decimal point">.</button>
+    <button class="key eq" data-k="=" aria-label="Equals">=</button>
+  </div>
+
+  <aside class="history" id="history" aria-hidden="true" aria-label="History">
+    <div class="h-head">
+      <span class="h-title">HISTORY</span>
+      <div class="h-actions">
+        <button class="h-btn" id="hClear">Clear</button>
+        <button class="h-btn" id="hClose">Close</button>
+      </div>
+    </div>
+    <div class="h-list" id="hList"></div>
+  </aside>
+</main>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = (sel) => document.querySelector(sel);
+  const OPS = { '+': '+', '-': '−', '*': '×', '/': '÷' };
+  const isOp = (x) => Object.prototype.hasOwnProperty.call(OPS, x);
+  const THEMES = ['aurora', 'sunset', 'mint', 'frost'];
+  const BRAND = 'Prism';
+
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* ignore */ } }
+  };
+
+  const el = {
+    calc: $('#calc'), value: $('#value'), expr: $('#expr'), tag: $('#tag'), lcd: $('#lcd'),
+    keys: $('#keys'), history: $('#history'), hList: $('#hList'),
+    btnHistory: $('#btnHistory'), btnTheme: $('#btnTheme'), btnSound: $('#btnSound')
+  };
+
+  /* ---------- state ---------- */
+  const s = {
+    tokens: [],        // completed numbers and operators, e.g. ['2', '+', '3', '×']
+    cur: '0',          // number being typed ('' while waiting for the next operand)
+    justEval: false,   // true right after "="
+    error: false,
+    repeat: null,      // { op, n } for repeated "="
+    last: '',          // expression shown after "="
+    history: store.get('calc.history', []),
+    theme: Math.max(0, THEMES.indexOf(store.get('calc.theme', 'aurora'))),
+    sound: !!store.get('calc.sound', false)
+  };
+
+  /* ---------- number helpers ---------- */
+  function fmtNum(n) {
+    if (!isFinite(n)) return null;
+    let r = parseFloat(n.toPrecision(12));
+    if (r === 0) r = 0; // kill -0
+    if (Math.abs(r) >= 1e15 || (r !== 0 && Math.abs(r) < 1e-7)) {
+      return r.toExponential(6).replace(/\.?0+e/, 'e');
+    }
+    return String(r);
+  }
+
+  function fmtDisplay(str) {
+    if (str == null) return '0';
+    if (/e/i.test(str)) return str;
+    const neg = str.startsWith('-');
+    const body = neg ? str.slice(1) : str;
+    const [i, f] = body.split('.');
+    const g = i.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return (neg ? '-' : '') + g + (f !== undefined ? '.' + f : '');
+  }
+
+  const exprText = (t) => t.map((x) => (isOp(x) ? OPS[x] : fmtDisplay(x))).join(' ');
+
+  // Proper operator precedence: × ÷ before + −
+  function evaluate(t) {
+    const a = t.map((x, i) => (i % 2 === 0 ? Number(x) : x));
+    const out = [a[0]];
+    for (let i = 1; i < a.length; i += 2) {
+      const op = a[i], n = a[i + 1];
+      if (op === '*' || op === '/') {
+        const prev = out.pop();
+        if (op === '/' && n === 0) throw new Error('div0');
+        out.push(op === '*' ? prev * n : prev / n);
+      } else {
+        out.push(op, n);
+      }
+    }
+    let res = out[0];
+    for (let i = 1; i < out.length; i += 2) res = out[i] === '+' ? res + out[i + 1] : res - out[i + 1];
+    return res;
+  }
+
+  /* ---------- feedback ---------- */
+  let flashTimer;
+  function flash(msg) {
+    el.tag.textContent = msg;
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => { el.tag.textContent = BRAND; }, 1400);
+  }
+
+  /* ---------- ASMR sound engine ----------
+     Every sound is synthesized live (no files).
+     MUSICAL: each key is its own tuned note in A-minor pentatonic, so anything you press sounds good together.
+     CRISPY:  every note starts with a razor snap + tuned noise "crunch" + a micro-crackle of tiny bright grains.
+     CREAMY:  a soft low anchor under each note, warm saturation, close-mic bass, and a dark room tail.
+     RHYTHMIC: each key has its own little pattern of ghost notes (flams, triplets, rolls) right after the hit.
+     Clicks on the empty screen play a note that follows where you click, and pan to that spot. */
+  let audio, noiseBuf, master;
+
+  function ctx() {
+    if (!audio) {
+      audio = new (window.AudioContext || window.webkitAudioContext)();
+      master = audio.createGain();
+      master.gain.value = 0.9;
+
+      // gentle saturation: warmth and fullness
+      const sat = audio.createWaveShaper();
+      const curve = new Float32Array(1024);
+      for (let i = 0; i < 1024; i++) { const x = i / 512 - 1; curve[i] = Math.tanh(1.8 * x) / Math.tanh(1.8); }
+      sat.curve = curve; sat.oversample = '2x';
+
+      // close-mic EQ: proximity bass for cream, bright air for crisp
+      const low = audio.createBiquadFilter(); low.type = 'lowshelf'; low.frequency.value = 180; low.gain.value = 3;
+      const high = audio.createBiquadFilter(); high.type = 'highshelf'; high.frequency.value = 6000; high.gain.value = 5;
+
+      // compressor lifts the tiny details; makeup gain + limiter keep it safe
+      const comp = audio.createDynamicsCompressor();
+      comp.threshold.value = -24; comp.knee.value = 18; comp.ratio.value = 4;
+      comp.attack.value = 0.001; comp.release.value = 0.12;
+      const makeup = audio.createGain(); makeup.gain.value = 1.5;
+      const limiter = audio.createDynamicsCompressor();
+      limiter.threshold.value = -2; limiter.knee.value = 0; limiter.ratio.value = 20;
+      limiter.attack.value = 0.001; limiter.release.value = 0.05;
+
+      // soft room whose tail darkens as it fades
+      const len = Math.floor(audio.sampleRate * 0.4);
+      const ir = audio.createBuffer(2, len, audio.sampleRate);
+      for (let ch = 0; ch < 2; ch++) {
+        const d = ir.getChannelData(ch);
+        let lp = 0;
+        for (let i = 0; i < len; i++) {
+          const a = 0.6 - 0.5 * (i / len);
+          lp += ((Math.random() * 2 - 1) - lp) * a;
+          d[i] = lp * Math.pow(1 - i / len, 2.6);
+        }
+      }
+      const verb = audio.createConvolver(); verb.buffer = ir;
+      const wet = audio.createGain(); wet.gain.value = 0.17;
+
+      master.connect(sat);
+      sat.connect(low); low.connect(high); high.connect(comp);
+      sat.connect(verb); verb.connect(wet); wet.connect(comp);
+      comp.connect(makeup); makeup.connect(limiter); limiter.connect(audio.destination);
+    }
+    if (audio.state === 'suspended') audio.resume();
+    if (!noiseBuf) {
+      const len = Math.floor(audio.sampleRate * 0.6);
+      noiseBuf = audio.createBuffer(1, len, audio.sampleRate);
+      const d = noiseBuf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    }
+    return audio;
+  }
+
+  function route(c, node, pan) {
+    if (c.createStereoPanner) {
+      const p = c.createStereoPanner();
+      p.pan.value = pan || 0;
+      node.connect(p); p.connect(master);
+    } else node.connect(master);
+  }
+
+  // shaped noise hit: crisp / airy / cushiony texture layers
+  function noiseHit(c, t, o) {
+    const { type = 'bandpass', f = 2000, q = 1, dur = 0.04, vol = 0.3, sweep = 0, pan = 0, attack = 0.002 } = o;
+    const src = c.createBufferSource(); src.buffer = noiseBuf;
+    const fl = c.createBiquadFilter(); fl.type = type; fl.Q.value = q;
+    fl.frequency.setValueAtTime(f, t);
+    if (sweep) fl.frequency.exponentialRampToValueAtTime(sweep, t + dur);
+    const g = c.createGain();
+    const a = Math.min(attack, dur * 0.4);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(Math.max(vol, 0.0002), t + a);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(fl); fl.connect(g); route(c, g, pan);
+    src.start(t, Math.random() * 0.3, dur + 0.03);
+    src.stop(t + dur + 0.04);
+  }
+
+  // pitched sine with a glide
+  function tone(c, t, o) {
+    const { from = 200, to = 120, dur = 0.08, vol = 0.2, pan = 0, attack = 0.003 } = o;
+    const osc = c.createOscillator(); osc.type = 'sine';
+    osc.frequency.setValueAtTime(from, t);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(to, 20), t + dur);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(Math.max(vol, 0.0002), t + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    osc.connect(g); route(c, g, pan);
+    osc.start(t); osc.stop(t + dur + 0.02);
+  }
+
+  // the ASMR crunch: scattered ultra-short bright noise grains
+  function crackle(c, t, o) {
+    const { n = 4, span = 0.035, vol = 0.16, pan = 0 } = o;
+    for (let i = 0; i < n; i++) {
+      noiseHit(c, t + Math.random() * span, {
+        type: 'highpass', f: 4500 + Math.random() * 5000, q: 0.8,
+        dur: 0.003 + Math.random() * 0.003,
+        vol: vol * (0.4 + Math.random() * 0.6) * (1 - i / (n + 1)),
+        pan, attack: 0.0005
+      });
+    }
+  }
+
+  // one crispy, tuned note: snap + tuned crunch + tight pitched body + creamy low anchor + crackle
+  function pluck(c, t, o) {
+    const { f = 880, vol = 1, pan = 0, glass = false, body = 1, grains = 5 } = o;
+    // razor-sharp attack
+    noiseHit(c, t, { type: 'highpass', f: 6000, q: 0.7, dur: 0.004, vol: 0.6 * vol, pan, attack: 0.0004 });
+    // tuned crunch: noise ringing around the note and its overtones, so the click itself has a pitch
+    noiseHit(c, t, { type: 'bandpass', f: Math.min(f * 2, 9000), q: 3.5, dur: 0.05, vol: 1.6 * vol, pan, attack: 0.0008 });
+    noiseHit(c, t, { type: 'bandpass', f: Math.min(f * 3.01, 10000), q: 3, dur: 0.03, vol: 1.2 * vol, pan, attack: 0.0006 });
+    // the note itself, short and tight
+    tone(c, t, { from: f * 1.01, to: f * 0.995, dur: 0.13, vol: 0.3 * vol, pan, attack: 0.0015 });
+    tone(c, t, { from: f * 2, to: f * 1.99, dur: 0.07, vol: 0.12 * vol, pan, attack: 0.0012 });
+    if (glass) {                                  // inharmonic partials = glassy / bell-like
+      tone(c, t, { from: f * 2.76, to: f * 2.74, dur: 0.09, vol: 0.09 * vol, pan, attack: 0.001 });
+      tone(c, t, { from: f * 5.4, to: f * 5.35, dur: 0.05, vol: 0.05 * vol, pan, attack: 0.001 });
+    }
+    // creamy anchor
+    if (body > 0) {
+      tone(c, t, { from: f * 0.5, to: f * 0.3, dur: 0.075, vol: 0.2 * vol * body, pan });
+      noiseHit(c, t, { type: 'lowpass', f: 900, q: 0.6, dur: 0.055, vol: 0.14 * vol * body, pan });
+    }
+    crackle(c, t + 0.001, { n: grains, span: 0.03, vol: 0.2 * vol, pan });
+  }
+
+  // ---- the scale: A minor pentatonic, so every key matches every other ----
+  const DIGIT_F = [440, 523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66, 1318.51, 1567.98]; // 0..9
+  const TAP_F = [1046.5, 1174.66, 1318.51, 1567.98, 1760, 2093, 2349.3];
+
+  // each key: its own note, timbre and rhythm pattern [delay, pitch ratio, loudness]
+  function voiceFor(k, pan) {
+    const base = { vol: 1, body: 1, grains: 5, glass: false, ghosts: [] };
+    if (/^\d$/.test(k)) {
+      const d = Number(k);
+      base.f = DIGIT_F[d];
+      if (d === 0) { base.body = 1.4; base.vol = 1.05; base.ghosts = [[0.05, 1.5, 0.3], [0.1, 2, 0.26]]; }   // two-step roll
+      else if (d % 2) base.ghosts = [[0.055, 2, 0.38]];                                                      // odd: octave sparkle
+      else base.ghosts = [[0.06, 1.5, 0.34]];                                                                // even: fifth flam
+      return base;
+    }
+    switch (k) {
+      case '+': return { ...base, f: 329.63, glass: true, body: 0.8, ghosts: [[0.045, 2, 0.36], [0.09, 3, 0.2]] };
+      case '-': return { ...base, f: 293.66, glass: true, body: 0.8, ghosts: [[0.05, 1.5, 0.36], [0.1, 2, 0.2]] };
+      case '*': return { ...base, f: 392, glass: true, body: 0.8, ghosts: [[0.04, 2, 0.36], [0.08, 2.5, 0.24]] };
+      case '/': return { ...base, f: 261.63, glass: true, body: 0.8, ghosts: [[0.05, 2, 0.36], [0.1, 3, 0.2]] };
+      case '%': return { ...base, f: 1760, glass: true, body: 0.4, ghosts: [[0.05, 1.5, 0.3]] };
+      case 'neg': return { ...base, f: 440, ghosts: [[0.05, 2, 0.45]] };
+      case '.': return { ...base, f: 2637, body: 0, grains: 3, vol: 0.7 };
+      case 'back': return { ...base, f: 1318.5, body: 0, grains: 3, vol: 0.75, ghosts: [[0.04, 0.794, 0.5]] };   // quick step down
+      default: {                                                                                                  // click anywhere: pitch follows x
+        const idx = Math.round(((Math.max(-0.7, Math.min(0.7, pan || 0)) / 0.7 + 1) / 2) * (TAP_F.length - 1));
+        return { ...base, f: TAP_F[idx], vol: 0.8, body: 0.5, grains: 4 };
+      }
+    }
+  }
+
+  function playDown(k, pan) {
+    try {
+      const c = ctx(), t = c.currentTime;
+      if (pan === undefined) pan = (Math.random() - 0.5) * 0.3;
+      const v = 0.9 + Math.random() * 0.2;                       // natural press-strength variation
+      if (k === '=') {                                           // resolving open chord, strummed
+        [[440, 0, 1, 1.3], [659.25, 0.02, 0.8, 0], [880, 0.04, 0.7, 0], [1318.5, 0.065, 0.6, 0]].forEach(([f, d, g, b], i) => {
+          pluck(c, t + d, { f, vol: 1.05 * v * g, pan: pan + (i - 1.5) * 0.08, glass: i === 3, body: b, grains: i === 0 ? 6 : 2 });
+        });
+        tone(c, t + 0.07, { from: 880, to: 878, dur: 0.6, vol: 0.04, pan, attack: 0.008 });
+        tone(c, t + 0.1, { from: 1318.5, to: 1316, dur: 0.6, vol: 0.03, pan, attack: 0.008 });
+      } else if (k === 'ac') {                                   // airy sweep + cascade down the scale + low landing
+        noiseHit(c, t, { type: 'bandpass', f: 6000, q: 0.9, dur: 0.26, vol: 0.4, sweep: 600, pan });
+        [1318.5, 1046.5, 880, 659.25].forEach((f, i) => pluck(c, t + i * 0.05, { f, vol: 0.8 * v, pan, body: 0, grains: 2 }));
+        pluck(c, t + 0.2, { f: 220, vol: 1 * v, pan, body: 2, grains: 4 });
+      } else {
+        const w = voiceFor(k, pan);
+        pluck(c, t, { f: w.f, vol: w.vol * v, pan, glass: w.glass, body: w.body, grains: w.grains });
+        w.ghosts.forEach(([d, r, g]) => pluck(c, t + d, { f: w.f * r, vol: w.vol * v * g, pan, glass: w.glass, body: 0, grains: 2 }));
+      }
+    } catch { /* ignore */ }
+  }
+
+  // release: a tiny crisp tick on the same note when you let go
+  function playUp(k, pan) {
+    try {
+      const c = ctx(), t = c.currentTime;
+      if (pan === undefined) pan = (Math.random() - 0.5) * 0.3;
+      const f = k === '=' ? 880 : k === 'ac' ? 659.25 : voiceFor(k, pan).f;
+      noiseHit(c, t, { type: 'highpass', f: 6000, q: 0.7, dur: 0.003, vol: 0.28, pan, attack: 0.0004 });
+      noiseHit(c, t, { type: 'bandpass', f: Math.min(f * 2.2, 9500), q: 3.5, dur: 0.025, vol: 0.9, pan, attack: 0.0006 });
+      tone(c, t, { from: f * 2, to: f * 1.98, dur: 0.035, vol: 0.07, pan, attack: 0.001 });
+      crackle(c, t + 0.001, { n: 2, span: 0.012, vol: 0.09, pan });
+    } catch { /* ignore */ }
+  }
+
+  // keyboard / programmatic press
+  function beep(k) {
+    if (!s.sound) return;
+    playDown(k);
+  }
+
+  // the sound toggle's own sounds: a crisp rising arpeggio for ON, a falling one for OFF
+  function toggleSound(on) {
+    try {
+      const c = ctx(), t = c.currentTime;
+      if (on) {
+        [880, 1046.5, 1318.5, 1760].forEach((f, i) => pluck(c, t + i * 0.045, { f, vol: 0.75, glass: true, body: i === 0 ? 1 : 0, grains: 3 }));
+        crackle(c, t + 0.12, { n: 6, span: 0.14, vol: 0.1 });
+      } else {
+        [1760, 1318.5, 1046.5, 880].forEach((f, i) => pluck(c, t + i * 0.045, { f, vol: 0.7, glass: true, body: 0, grains: 2 }));
+        pluck(c, t + 0.2, { f: 220, vol: 0.9, body: 2, grains: 3 });
+      }
+    } catch { /* ignore */ }
+  }
+
+  function ripple(btn, e) {
+    const r = btn.getBoundingClientRect();
+    const d = Math.max(r.width, r.height) * 2.2;
+    const hasPoint = e && typeof e.clientX === 'number' && !(e.detail === 0);
+    const x = hasPoint ? e.clientX - r.left : r.width / 2;
+    const y = hasPoint ? e.clientY - r.top : r.height / 2;
+    const sp = document.createElement('span');
+    sp.className = 'ripple';
+    sp.style.cssText = `width:${d}px;height:${d}px;left:${x - d / 2}px;top:${y - d / 2}px`;
+    btn.appendChild(sp);
+    setTimeout(() => sp.remove(), 650);
+  }
+
+  /* ---------- actions ---------- */
+  function resetAll() {
+    s.tokens = []; s.cur = '0'; s.justEval = false; s.error = false; s.repeat = null; s.last = '';
+  }
+
+  function setError(msg) {
+    s.error = true; s.tokens = []; s.cur = '0'; s.justEval = false; s.repeat = null; s.last = '';
+    flash(msg);
+  }
+
+  function startFresh() {
+    s.cur = '0'; s.tokens = []; s.justEval = false; s.repeat = null; s.last = '';
+  }
+
+  function inputDigit(d) {
+    if (s.error) resetAll();
+    if (s.justEval) startFresh();
+    if (s.cur.includes('e')) return;
+    if (s.cur === '' || s.cur === '0') s.cur = d;
+    else if (s.cur === '-0') s.cur = '-' + d;
+    else {
+      if (s.cur.replace(/[^0-9]/g, '').length >= 15) { flash('Max digits'); return; }
+      s.cur += d;
+    }
+  }
+
+  function inputDot() {
+    if (s.error) resetAll();
+    if (s.justEval) startFresh();
+    if (s.cur === '') s.cur = '0.';
+    else if (!s.cur.includes('.') && !s.cur.includes('e')) s.cur += '.';
+  }
+
+  function inputOp(op) {
+    if (s.error) return;
+    if (s.justEval) {
+      s.tokens = [s.cur, op]; s.cur = ''; s.justEval = false; s.repeat = null; s.last = '';
+      return;
+    }
+    if (s.cur === '') { s.tokens[s.tokens.length - 1] = op; return; }
+    s.tokens.push(s.cur, op);
+    s.cur = '';
+  }
+
+  function equals() {
+    if (s.error) return false;
+    let t;
+    if (s.justEval) {
+      if (!s.repeat) return false;
+      t = [s.cur, s.repeat.op, s.repeat.n];
+    } else {
+      t = [...s.tokens];
+      if (s.cur !== '') t.push(s.cur);
+      else if (t.length >= 2) t.push(t[t.length - 2]); // "5 + =" -> 5 + 5
+      if (t.length < 3) return false;
+    }
+    let res;
+    try { res = evaluate(t); } catch { setError("Can't divide by 0"); return true; }
+    const str = fmtNum(res);
+    if (str === null) { setError('Overflow'); return true; }
+
+    const text = exprText(t) + ' =';
+    s.history.unshift({ expr: text, res: str });
+    s.history = s.history.slice(0, 50);
+    store.set('calc.history', s.history);
+    renderHistory();
+
+    s.repeat = { op: t[t.length - 2], n: t[t.length - 1] };
+    s.tokens = []; s.cur = str; s.justEval = true; s.last = text;
+    return true;
+  }
+
+  function percent() {
+    if (s.error) return;
+    if (s.justEval) { s.cur = fmtNum(Number(s.cur) / 100) ?? s.cur; s.last = ''; return; }
+    if (s.cur === '' && s.tokens.length >= 2) s.cur = s.tokens[s.tokens.length - 2];
+    let n = Number(s.cur);
+    const op = s.tokens[s.tokens.length - 1];
+    if (s.tokens.length >= 2 && (op === '+' || op === '-')) {
+      try { n = (evaluate(s.tokens.slice(0, -1)) * n) / 100; } catch { setError("Can't divide by 0"); return; }
+    } else {
+      n = n / 100;
+    }
+    s.cur = fmtNum(n) ?? s.cur;
+  }
+
+  function negate() {
+    if (s.error) return;
+    if (s.justEval) { s.cur = fmtNum(-Number(s.cur)) ?? s.cur; s.last = ''; return; }
+    if (s.cur === '') s.cur = '-0';
+    else if (s.cur.startsWith('-')) s.cur = s.cur.slice(1);
+    else s.cur = '-' + s.cur;
+  }
+
+  function backspace() {
+    if (s.error) { resetAll(); return; }
+    if (s.justEval) { s.last = ''; s.repeat = null; return; }
+    if (s.cur === '') {
+      if (s.tokens.length >= 2) { s.tokens.pop(); s.cur = s.tokens.pop(); }
+      return;
+    }
+    s.cur = s.cur.slice(0, -1);
+    if (s.cur === '' || s.cur === '-') s.cur = '0';
+  }
+
+  /* ---------- render ---------- */
+  function fit() {
+    const v = el.value;
+    v.style.fontSize = '';
+    let size = parseFloat(getComputedStyle(v).fontSize);
+    while (v.scrollWidth > v.clientWidth && size > 18) { size -= 2; v.style.fontSize = size + 'px'; }
+  }
+
+  function render(animate) {
+    let main;
+    if (s.error) main = 'Error';
+    else if (s.cur === '') main = fmtDisplay(s.tokens[s.tokens.length - 2]);
+    else main = fmtDisplay(s.cur);
+    el.value.textContent = main;
+
+    let ex = s.error ? '' : s.justEval ? s.last : exprText(s.tokens);
+    if (ex.length > 30) ex = '…' + ex.slice(-29);
+    el.expr.textContent = ex;
+
+    const pending = !s.error && s.cur === '' && s.tokens.length ? s.tokens[s.tokens.length - 1] : null;
+    document.querySelectorAll('.key.op').forEach((b) => b.classList.toggle('active', b.dataset.k === pending));
+
+    fit();
+    if (animate) { el.value.classList.remove('pop'); void el.value.offsetWidth; el.value.classList.add('pop'); }
+  }
+
+  function handle(k, silent) {
+    let animate = false;
+    if (/^\d$/.test(k)) inputDigit(k);
+    else switch (k) {
+      case '.': inputDot(); break;
+      case '+': case '-': case '*': case '/': inputOp(k); break;
+      case '=': animate = equals(); break;
+      case '%': percent(); animate = true; break;
+      case 'neg': negate(); break;
+      case 'back': backspace(); break;
+      case 'ac': resetAll(); break;
+    }
+    if (!silent) beep(k);
+    render(animate);
+  }
+
+  /* ---------- history ---------- */
+  function renderHistory() {
+    el.hList.textContent = '';
+    if (!s.history.length) {
+      const e = document.createElement('div');
+      e.className = 'h-empty';
+      e.textContent = 'Nothing here yet.\nFinish a calculation with = and it lands here.';
+      e.style.whiteSpace = 'pre-line';
+      el.hList.appendChild(e);
+      return;
+    }
+    s.history.forEach((h, i) => {
+      const b = document.createElement('button');
+      b.className = 'h-item'; b.dataset.i = i;
+      const a = document.createElement('span'); a.className = 'h-expr'; a.textContent = h.expr;
+      const r = document.createElement('span'); r.className = 'h-res'; r.textContent = fmtDisplay(h.res);
+      b.append(a, r);
+      el.hList.appendChild(b);
+    });
+  }
+
+  function placeDrawer() { el.history.style.top = (el.keys.offsetTop - 12) + 'px'; }
+
+  function toggleHistory(force) {
+    const open = typeof force === 'boolean' ? force : !el.history.classList.contains('open');
+    if (open) placeDrawer();
+    el.history.classList.toggle('open', open);
+    el.history.setAttribute('aria-hidden', String(!open));
+  }
+
+  el.hList.addEventListener('click', (e) => {
+    const b = e.target.closest('.h-item');
+    if (!b) return;
+    const item = s.history[Number(b.dataset.i)];
+    if (!item) return;
+    if (s.error) resetAll();
+    if (s.cur === '' && s.tokens.length) { s.cur = item.res; }
+    else { s.tokens = []; s.cur = item.res; s.justEval = true; s.repeat = null; s.last = ''; }
+    toggleHistory(false);
+    render(true);
+  });
+  $('#hClear').addEventListener('click', () => { s.history = []; store.set('calc.history', []); renderHistory(); });
+  $('#hClose').addEventListener('click', () => toggleHistory(false));
+  el.btnHistory.addEventListener('click', () => toggleHistory());
+
+  /* ---------- theme + sound ---------- */
+  function applyTheme(announce) {
+    const name = THEMES[s.theme];
+    document.documentElement.dataset.theme = name;
+    store.set('calc.theme', name);
+    if (announce) flash(name);
+  }
+  function cycleTheme() { s.theme = (s.theme + 1) % THEMES.length; applyTheme(true); }
+  function applySound() {
+    el.btnSound.setAttribute('aria-pressed', String(s.sound));
+    store.set('calc.sound', s.sound);
+  }
+  el.btnTheme.addEventListener('click', cycleTheme);
+  el.btnSound.addEventListener('click', () => {
+    if (s.sound) toggleSound(false);          // play the "off" sound while audio is still on
+    s.sound = !s.sound;
+    applySound();
+    flash(s.sound ? 'Sound on' : 'Sound off');
+    if (s.sound) toggleSound(true);
+  });
+
+  /* ---------- input wiring ---------- */
+  el.calc.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-k]');
+    if (!b) return;
+    ripple(b, e);
+    handle(b.dataset.k, e.detail !== 0);   // real pointer clicks already sounded on press
+  });
+
+  // soft light that follows the pointer across the keys
+  el.keys.addEventListener('pointermove', (e) => {
+    const b = e.target.closest('.key');
+    if (!b) return;
+    const r = b.getBoundingClientRect();
+    b.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+    b.style.setProperty('--my', (e.clientY - r.top) + 'px');
+  });
+
+  const KEYMAP = {
+    Enter: '=', '=': '=', Escape: 'ac', Delete: 'ac', c: 'ac', C: 'ac',
+    Backspace: 'back', '%': '%', '.': '.', ',': '.',
+    '+': '+', '-': '-', '*': '*', x: '*', X: '*', '/': '/', n: 'neg', N: 'neg'
+  };
+
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const histOpen = el.history.classList.contains('open');
+
+    if (e.key === 'h' || e.key === 'H') { toggleHistory(); e.preventDefault(); return; }
+    if (e.key === 't' || e.key === 'T') { cycleTheme(); e.preventDefault(); return; }
+    if (e.key === 'm' || e.key === 'M') { el.btnSound.click(); e.preventDefault(); return; }
+    if (e.key === 'Escape' && histOpen) { toggleHistory(false); e.preventDefault(); return; }
+
+    let k = null;
+    if (/^\d$/.test(e.key)) k = e.key;
+    else if (KEYMAP[e.key]) k = KEYMAP[e.key];
+    if (!k) return;
+
+    e.preventDefault();
+    handle(k);
+    const btn = [...el.calc.querySelectorAll('[data-k]')].find((b) => b.dataset.k === k);
+    if (btn) {
+      btn.classList.add('pressed');
+      ripple(btn, { detail: 0 });
+      setTimeout(() => btn.classList.remove('pressed'), 120);
+    }
+  });
+
+  // click the display to copy the value
+  el.lcd.addEventListener('click', async (e) => {
+    if (e.target.closest('[data-k]') || s.error) return;
+    const raw = s.cur === '' ? s.tokens[s.tokens.length - 2] : s.cur;
+    try {
+      await navigator.clipboard.writeText(raw);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = raw; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch { /* ignore */ }
+      ta.remove();
+    }
+    flash('Copied');
+  });
+
+  // paste a number straight onto the display
+  document.addEventListener('paste', (e) => {
+    const text = (e.clipboardData || window.clipboardData).getData('text').trim().replace(/,/g, '');
+    if (!/^-?(\d+\.?\d*|\.\d+)$/.test(text) || text.replace(/\D/g, '').length > 15) return;
+    e.preventDefault();
+    if (s.error) resetAll();
+    const n = text.startsWith('.') ? '0' + text : text;
+    if (s.cur === '' && s.tokens.length) s.cur = n;
+    else { s.tokens = []; s.cur = n; s.justEval = false; s.repeat = null; s.last = ''; }
+    flash('Pasted');
+    render(true);
+  });
+
+  window.addEventListener('resize', () => { fit(); if (el.history.classList.contains('open')) placeDrawer(); });
+
+  /* ---------- ASMR: a sound for a click anywhere on the screen, plus the release "up" click ---------- */
+  let lastDown;  // { k } while a pointer is held down
+  const panAt = (x) => Math.max(-0.7, Math.min(0.7, ((x / window.innerWidth) * 2 - 1) * 0.7));
+
+  document.addEventListener('pointerdown', (e) => {
+    if (!s.sound || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    if (e.target.closest('#btnSound')) return;           // the toggle has its own sounds
+    const b = e.target.closest('[data-k]');
+    const k = b ? b.dataset.k : 'tap';                   // not a key? still gets a satisfying tap
+    lastDown = { k };
+    playDown(k, panAt(e.clientX));
+  });
+  document.addEventListener('pointerup', (e) => {
+    if (!lastDown) return;
+    const { k } = lastDown; lastDown = null;
+    if (s.sound) playUp(k, panAt(e.clientX || window.innerWidth / 2));
+  });
+  document.addEventListener('pointercancel', () => { lastDown = null; });
+
+  document.addEventListener('keyup', (e) => {
+    if (!s.sound || e.ctrlKey || e.metaKey || e.altKey) return;
+    const k = /^\d$/.test(e.key) ? e.key : KEYMAP[e.key];
+    if (k) playUp(k);
+  });
+
+  /* ---------- init ---------- */
+  applyTheme(false);
+  applySound();
+  renderHistory();
+  render(false);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fit());
+})();
+</script>
+</body>
+</html>
